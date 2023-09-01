@@ -1,0 +1,56 @@
+function sendNewEmails() {
+  var inboxSheetId = '12kGXR1ue1uBxRuZw2iecF0k4O2NCWzJl46NUd6jl8Qs';
+  var templatesSheetId = '12kGXR1ue1uBxRuZw2iecF0k4O2NCWzJl46NUd6jl8Qs';
+  
+  var inboxSheet = SpreadsheetApp.openById(inboxSheetId).getSheetByName('Inbox');
+  var inboxData = inboxSheet.getDataRange().getValues();
+  
+  var templatesSheet = SpreadsheetApp.openById(templatesSheetId).getSheetByName('Templates');
+  var templatesData = templatesSheet.getDataRange().getValues();
+  
+  // Get the last processed row from Script Properties
+  var scriptProperties = PropertiesService.getScriptProperties();
+  var lastProcessedRow = scriptProperties.getProperty('lastProcessedRow');
+  lastProcessedRow = lastProcessedRow ? parseInt(lastProcessedRow, 10) : 0;
+  
+  var newRowsExist = false; // Flag to check if there are new rows
+  
+  for (var i = lastProcessedRow + 1; i < inboxData.length; i++) {
+    var name = inboxData[i][2];
+    var email = inboxData[i][3];
+    var needed = inboxData[i][7];
+    
+    var templateText = getTemplateText(needed, templatesData);
+    
+    var subject = 'Dear ' + name + ', your ' + needed + ' Order';
+    var message = templateText;
+    
+    sendEmail(email, subject, message);
+    
+    newRowsExist = true; // Set the flag to true indicating new rows were processed
+  }
+  
+  if (newRowsExist) {
+    // Update the last processed row in Script Properties
+    scriptProperties.setProperty('lastProcessedRow', i - 1);
+  }
+}
+
+function getTemplateText(needed, templatesData) {
+  for (var i = 1; i < templatesData.length; i++) {
+    if (templatesData[i][0] === needed) {
+      return templatesData[i][1];
+    }
+  }
+  
+  if (templatesData.length > 0 && templatesData[0][0] === 'General') {
+    return templatesData[0][1];
+  }
+  
+  return null;
+}
+
+function sendEmail(to, subject, body) {
+  var from = 'mihel.klimm@gmail.com';
+  GmailApp.sendEmail(to, subject, body, { from: from });
+}
