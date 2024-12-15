@@ -1,0 +1,38 @@
+A fairly common task in data analytics is adding a calculated column with indicators for the previous month or for the same period last year.
+Sometimes this task is solved using a window function and the LAG operator. But it is quite easy to make a mistake here, especially if the data contains gaps in the rows for a combination of period and dimension.
+Therefore, I prefer to use subqueries with a date shift using the Interval operator. Here we will definitely not lose rows.
+But a separate question is how to combine subqueries. An attempt to perform a horizontal join will lead to the loss of some rows for non-overlapping periods. For example, if you are in November and there is no data for December in the fact table yet, then we will also lose December of last year, since there is nothing to pull it to.
+It is best to use a vertical union all - in this case we will definitely save all the data. And in general, you can only join fact tables with a union, joins are not suitable here.
+
+WITH current_year AS (
+    SELECT
+        report_date,
+        manufacturer,
+        sales
+    FROM
+        fact_sales
+),
+previous_year AS (
+    SELECT
+        DATE(report_date, '+12 months') AS report_date,
+        manufacturer,
+        sales AS sales_previous_year
+    FROM
+        fact_sales
+),
+combined_data AS (
+    SELECT
+        report_date,
+        manufacturer,
+        sales,
+        0 AS sales_previous_year
+    FROM
+        current_year
+    UNION ALL
+    SELECT
+        report_date,
+        manufacturer,
+        0 AS sales,
+        sales_previous_year
+    FROM
+        previous_year
